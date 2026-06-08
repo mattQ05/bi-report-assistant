@@ -1,8 +1,12 @@
 import base64
 import io
 import os
+import subprocess
+import sys
+from statistics import mode
 
 import streamlit as st
+from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 from PIL import Image
@@ -40,6 +44,7 @@ client = OpenAI(api_key=api_key)
 # ============================================================
 ASSISTANT_MODES = [
     "Dashboard Review",
+    "Model Review",
     "DAX Debugging",
     "Measure Generator",
     "Insight Writer",
@@ -48,6 +53,7 @@ ASSISTANT_MODES = [
 
 MODE_DESCRIPTIONS = {
     "Dashboard Review": "Review dashboard layout, spacing, visuals, labels, and readiness.",
+    "Model Review": "Review Power BI model structure, tables, columns, measures, and relationships.",
     "DAX Debugging": "Check DAX syntax, logic, references, and cleaner calculation patterns.",
     "Measure Generator": "Suggest useful DAX measures based on your schema and existing measures.",
     "Insight Writer": "Turn dashboard metrics into executive-friendly business insights.",
@@ -56,14 +62,55 @@ MODE_DESCRIPTIONS = {
 
 DEFAULT_QUESTIONS = {
     "Dashboard Review": "Can you review my dashboard and tell me what looks good, what looks off, and what I should fix before sharing it?",
+    "Model Review": "Can you review my Power BI model structure and tell me what looks good, what needs improvement, and how I can make it cleaner?",
     "DAX Debugging": "Can you check my DAX measures, fix any issues, and explain what I should change?",
     "Measure Generator": "What other useful DAX measures should I add to this report?",
     "Insight Writer": "Can you write the main business insights from this dashboard?",
     "README Writer": "Can you write a professional GitHub README for this Power BI dashboard project?",
 }
 
+PROMPT_LIBRARY = {
+    "Dashboard Review": {
+        "Review layout": "Can you review the dashboard layout, spacing, alignment, and visual hierarchy?",
+        "Portfolio readiness": "Is this dashboard ready to include in a portfolio? What should I fix first?",
+        "Top visual fixes": "What are the top 5 visual improvements I should make to this dashboard?",
+        "Executive polish": "How can I make this dashboard look more professional for stakeholders or executives?",
+    },
+    "Model Review": {
+        "Review model": "Can you review my connected Power BI model and tell me what looks good and what needs improvement?",
+        "Find model issues": "Based on the connected model context, what model structure issues should I fix?",
+        "Star schema advice": "Does this model look like it would benefit from a star schema? Explain what should change.",
+        "Measure organization": "How should I organize, rename, or improve the measures in this Power BI model?",
+    },
+    "DAX Debugging": {
+        "Check DAX": "Can you check my DAX measures for syntax, logic, and naming issues?",
+        "Improve measures": "Can you improve these DAX measures and explain what changed?",
+        "Explain DAX": "Can you explain what each DAX measure is doing in plain English?",
+        "Find risky logic": "Are there any risky calculations, missing DIVIDE patterns, or unclear business definitions in my measures?",
+    },
+    "Measure Generator": {
+        "Suggest KPIs": "What useful KPI measures should I add based on the provided model context?",
+        "Generate measures": "Suggest 5 practical DAX measures I can add without inventing new columns or tables.",
+        "Ratios and margins": "What ratio, percentage, margin, or efficiency measures would be useful for this dataset?",
+        "Dashboard cards": "Which measures would make the best KPI cards for this report?",
+    },
+    "Insight Writer": {
+        "Write insights": "Can you write the main business insights from this dashboard?",
+        "Executive summary": "Write a short executive summary based on the dashboard and provided context.",
+        "Business questions": "What business questions can this dashboard help answer?",
+        "Dashboard callouts": "Write 3 short dashboard callout sentences I could place directly on the report.",
+    },
+    "README Writer": {
+        "Create README": "Can you write a professional GitHub README for this Power BI dashboard project?",
+        "Portfolio description": "Can you write a portfolio-friendly project description for this dashboard?",
+        "Skills section": "Can you write the skills showcased section for this Power BI project?",
+        "Project summary": "Can you summarize this project for GitHub and LinkedIn?",
+    },
+}
+
 OUTPUT_TITLES = {
     "Dashboard Review": "Dashboard Review",
+    "Model Review": "Model Review",
     "DAX Debugging": "DAX Review",
     "Measure Generator": "Suggested Measures",
     "Insight Writer": "Business Insights",
@@ -213,6 +260,65 @@ Use this exact Markdown structure:
 ## 5. Final verdict
 Give a short final verdict in 2–3 sentences. State whether the dashboard is ready to share, almost ready, or needs more work.
 """,
+
+    "Model Review": """
+You are in Model Review mode.
+
+Your job is to review the Power BI model structure using the provided model context, schema, measures, relationships, and any uploaded context file.
+
+Focus on:
+- table structure
+- whether the model appears flat or dimensional
+- column naming clarity
+- measure naming clarity
+- measure organization
+- relationship quality
+- missing relationships
+- hidden/auto-generated Power BI tables
+- whether a Date table may be needed
+- whether the model could benefit from a star schema
+- model readability and portfolio readiness
+
+Do not critique dashboard layout, colors, chart spacing, or visual design unless the user asks.
+
+Do not invent tables, columns, relationships, or measures that are not in the provided model context.
+
+If the connected Power BI model context is available, prioritize that over manually pasted schema because it was extracted from the open PBIX model.
+
+Use careful language:
+- Say "appears to" when inferring model design.
+- Say "based on the provided model context" when making recommendations.
+- If relationships are missing or zero, explain what that may mean without assuming it is definitely wrong.
+
+Use this exact Markdown structure:
+
+## 1. Model summary
+Summarize the visible tables, columns, measures, and relationships from the provided context.
+
+## 2. What looks strong
+- Mention what is working well in the model structure, naming, measures, or organization.
+
+## 3. Potential model issues
+- Mention possible problems such as flat table design, missing relationships, unclear names, too many columns in one table, missing Date table, or hidden auto-date tables.
+
+## 4. Recommended improvements
+1. **Improve X** — explain why it matters.
+2. **Improve X** — explain why it matters.
+3. **Improve X** — explain why it matters.
+4. **Improve X** — explain why it matters.
+5. **Improve X** — explain why it matters.
+
+## 5. DAX and measure organization notes
+Give practical notes about measure naming, grouping, display folders, base measures, and reusable calculations.
+
+## 6. Model-readiness score
+**Score:** X/10  
+**Reason:** Give one short sentence explaining the score.
+
+## 7. Final verdict
+Give a short final verdict in 2–3 sentences. State whether the model is clean, usable but needs improvement, or needs restructuring.
+""",
+
     "DAX Debugging": """
 You are in DAX Debugging mode.
 
@@ -452,6 +558,142 @@ def apply_custom_css() -> None:
             color: #cbd5e1;
             font-size: 15px;
         }
+        
+        .app-shell-header {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 18px;
+            padding: 24px 26px 20px 26px;
+            margin-bottom: 18px;
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.22);
+}
+
+        .brand-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 24px;
+}
+
+        .brand-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+}
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2563eb, #22c55e);
+            color: white;
+            font-size: 25px;
+            font-weight: 900;
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+}
+
+        .brand-title {
+            font-size: 30px;
+            font-weight: 850;
+            letter-spacing: -0.7px;
+            color: #f8fafc;
+}
+
+        .brand-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 4px;
+}
+
+        .brand-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(2, 6, 23, 0.35);
+            border-radius: 999px;
+            padding: 8px 12px;
+            white-space: nowrap;
+}
+
+        .status-dot-small {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+}
+
+        .capability-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 22px;
+}
+
+        .capability-item {
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(2, 6, 23, 0.28);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+        .workflow-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0 34px 0;
+            padding: 0 4px;
+}
+
+        .workflow-line-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 750;
+            white-space: nowrap;
+}
+
+        .workflow-line-step span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+            font-size: 11px;
+}
+
+        .workflow-line-step.active {
+            color: #dcfce7;
+}
+
+        .workflow-line-step.active span {
+            background: rgba(22, 101, 52, 0.35);
+            border-color: rgba(74, 222, 128, 0.35);
+            color: #bbf7d0;
+}
+
+        .workflow-line-divider {
+            height: 1px;
+            flex: 1;
+            min-width: 28px;
+            background: linear-gradient(90deg, rgba(148, 163, 184, 0.24), rgba(148, 163, 184, 0.05));
+}
 
         .mode-pill, .output-mode-pill {
             display: inline-block;
@@ -480,6 +722,32 @@ def apply_custom_css() -> None:
             flex-wrap: wrap;
         }
 
+        
+        .workflow-bar {
+            display: flex;
+            gap: 12px;
+            margin: 4px 0 34px 0;
+            flex-wrap: wrap;
+}
+
+        .workflow-step {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            color: #cbd5e1;
+            font-size: 13px;
+            font-weight: 700;
+}
+
+        
+        .workflow-step.active {
+            background: rgba(22, 101, 52, 0.35);
+            border-color: rgba(74, 222, 128, 0.35);
+            color: #bbf7d0;
+        }
+
+        
         .feature-pill {
             background: rgba(30, 64, 175, 0.18);
             border: 1px solid rgba(96, 165, 250, 0.35);
@@ -489,6 +757,69 @@ def apply_custom_css() -> None:
             font-size: 13px;
             font-weight: 650;
         }
+
+        
+        .connected-card {
+            background: linear-gradient(135deg, rgba(22, 101, 52, 0.22), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(74, 222, 128, 0.28);
+            border-radius: 22px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+
+        .connected-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+}
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.9);
+}
+
+        .connected-title {
+            font-weight: 800;
+            font-size: 16px;
+            color: #dcfce7;
+}
+
+        .connected-subtitle {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 2px;
+}
+
+        .model-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+}
+
+        .model-metric {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 16px;
+            padding: 12px;
+}
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 850;
+            color: #f8fafc;
+}
+
+        .metric-label {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 700;
+            margin-top: 2px;
+}
 
         .stTextArea textarea {
             border-radius: 16px !important;
@@ -578,10 +909,47 @@ def init_session_state() -> None:
         "schema_input": "",
         "dax_input": "",
         "response_history": [],
+        "prompt_input": "",
+        "last_mode": "",
+        "report_reset_id": 0,
+         "mode_chosen": False,
+        "analysis_done": False,
+        "refresh_message": "",
+        "refresh_error": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+def refresh_powerbi_model_context() -> None:
+    st.session_state.refresh_message = ""
+    st.session_state.refresh_error = ""
+
+    if not POWERBI_EXTRACTOR_SCRIPT.exists():
+        st.session_state.refresh_error = (
+            "Could not find extract_powerbi_metadata.py in the project folder."
+        )
+        return
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(POWERBI_EXTRACTOR_SCRIPT)],
+            cwd=str(Path(__file__).resolve().parent),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        if result.returncode == 0:
+            st.session_state.refresh_message = "Power BI model context refreshed successfully."
+        else:
+            st.session_state.refresh_error = (
+                "Power BI model refresh failed.\n\n"
+                + result.stderr
+            )
+
+    except Exception as e:
+        st.session_state.refresh_error = f"Power BI model refresh failed: {e}"
 
 
 def reset_inputs() -> None:
@@ -591,8 +959,23 @@ def reset_inputs() -> None:
     st.session_state.response_mode = ""
     st.session_state.response_history = []
 
+def start_new_report() -> None:
+    st.session_state.schema_input = ""
+    st.session_state.dax_input = ""
+    st.session_state.assistant_response = ""
+    st.session_state.response_mode = ""
+    st.session_state.response_history = []
+    st.session_state.prompt_input = ""
+    st.session_state.last_mode = ""
+    st.session_state.mode_chosen = False
+    st.session_state.analysis_done = False
 
+    st.session_state.report_reset_id += 1
+
+AUTO_POWERBI_CONTEXT_FILE = Path(__file__).resolve().parent / "powerbi_model_context.txt"
+POWERBI_EXTRACTOR_SCRIPT = Path(__file__).resolve().parent / "extract_powerbi_metadata.py"
 MAX_CONTEXT_CHARS = 8000  # Limit context file text to prevent excessively long inputs
+
 def read_uploaded_context_file(uploaded_file) -> str:
     if uploaded_file is None:
         return ""
@@ -610,6 +993,24 @@ def read_uploaded_context_file(uploaded_file) -> str:
         return "The uploaded context file could not be decoded as UTF-8 text."
     except Exception as e:
         return f"Error reading uploaded context file: {e}"
+    
+def read_auto_powerbi_context_file() -> str:
+    if not AUTO_POWERBI_CONTEXT_FILE.exists():
+        return ""
+
+    try:
+        text = AUTO_POWERBI_CONTEXT_FILE.read_text(encoding="utf-8")
+
+        if len(text) > MAX_CONTEXT_CHARS:
+            return (
+                text[:MAX_CONTEXT_CHARS]
+                + "\n\n[Auto-loaded Power BI model context truncated for length.]"
+            )
+
+        return text
+
+    except Exception as e:
+        return f"Error reading auto-loaded Power BI model context: {e}"
 
 
 def load_sample_inputs() -> None:
@@ -618,6 +1019,58 @@ def load_sample_inputs() -> None:
     st.session_state.assistant_response = ""
     st.session_state.response_mode = ""
 
+def update_prompt_from_library(prompt_text: str) -> None:
+    st.session_state.prompt_input = prompt_text
+
+def mark_mode_chosen() -> None:
+    st.session_state.mode_chosen = True
+
+def get_section_text(text: str, section_name: str) -> str:
+    section_header = f"## {section_name}"
+
+    if section_header not in text:
+        return ""
+
+    section_start = text.find(section_header)
+    next_section_start = text.find("\n## ", section_start + len(section_header))
+
+    if next_section_start == -1:
+        return text[section_start:]
+
+    return text[section_start:next_section_start]
+
+def parse_powerbi_model_summary(context_text: str) -> dict:
+    tables_section = get_section_text(context_text, "Tables")
+    columns_section = get_section_text(context_text, "Columns")
+    measures_section = get_section_text(context_text, "Measures")
+    relationships_section = get_section_text(context_text, "Relationships")
+
+    table_count = tables_section.count("### Table:")
+
+    column_count = 0
+    for line in columns_section.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- ") and "[" in stripped and "]" in stripped:
+            column_count += 1
+
+    measure_count = 0
+    for line in measures_section.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("### "):
+            measure_count += 1
+
+    relationship_count = 0
+    for line in relationships_section.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- ") and "→" in stripped:
+            relationship_count += 1
+
+    return {
+        "tables": table_count,
+        "columns": column_count,
+        "measures": measure_count,
+        "relationships": relationship_count,
+    }
 
 def image_to_data_url(uploaded_image) -> str:
     image = Image.open(uploaded_image).convert("RGB")
@@ -647,6 +1100,9 @@ def get_download_info(mode: str, output: str) -> tuple[str, str, str]:
 
     if mode == "Insight Writer":
         return "Download Insights", "dashboard_insights.md", clean_non_code_output(output)
+
+    if mode == "Model Review":
+        return "Download Model Review", "model_review.md", clean_non_code_output(output)
 
     return "Download Feedback", "dashboard_feedback.md", clean_non_code_output(output)
 
@@ -703,7 +1159,7 @@ Do not switch into Dashboard Review mode unless the selected mode is Dashboard R
 def call_openai(user_prompt: str, image_data_url: str | None = None) -> str:
     if image_data_url:
         response = client.responses.create(
-            model="gpt-4.1-mini",
+            model="gpt-5.5",
             input=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
@@ -717,7 +1173,7 @@ def call_openai(user_prompt: str, image_data_url: str | None = None) -> str:
         )
     else:
         response = client.responses.create(
-            model="gpt-4.1-mini",
+            model="gpt-5.5",
             input=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -731,48 +1187,157 @@ def call_openai(user_prompt: str, image_data_url: str | None = None) -> str:
 # UI sections
 # ============================================================
 def render_header() -> None:
+    model_connected = AUTO_POWERBI_CONTEXT_FILE.exists()
+
+    screenshot_key = f"uploaded_image_{st.session_state.get('report_reset_id', 0)}"
+    screenshot_added = st.session_state.get(screenshot_key) is not None
+
+    mode_selected = st.session_state.get("mode_chosen", False)
+    analysis_done = st.session_state.get("analysis_done", False)
+
+    step_1_class = "workflow-line-step active" if model_connected else "workflow-line-step"
+    step_2_class = "workflow-line-step active" if screenshot_added else "workflow-line-step"
+    step_3_class = "workflow-line-step active" if mode_selected else "workflow-line-step"
+    step_4_class = "workflow-line-step active" if analysis_done else "workflow-line-step"
+
     st.markdown(
-        """
-        <div class="hero-card">
-            <div class="hero-title">📊 BI Report Assistant</div>
-            <div class="hero-subtitle">
-                Review Power BI dashboards, debug DAX, generate measures, write insights, and create project documentation.
+        f"""
+<div class="app-shell-header">
+    <div class="brand-row">
+        <div class="brand-left">
+            <div class="brand-icon">▦</div>
+            <div>
+                <div class="brand-title">BI Report Assistant</div>
+                <div class="brand-subtitle">
+                    Power BI review, model analysis, DAX support, and business insight generation.
+                </div>
             </div>
-            <div class="mode-pill">AI-powered Power BI workflow assistant</div>
         </div>
+
+<div class="brand-status">
+            <span class="status-dot-small"></span>
+            Power BI workflow assistant
+        </div>
+    </div>
+
+<div class="capability-row">
+        <div class="capability-item">Screenshot-aware review</div>
+        <div class="capability-item">Connected model context</div>
+        <div class="capability-item">DAX and measure support</div>
+        <div class="capability-item">Exportable outputs</div>
+    </div>
+</div>
+
+<div class="workflow-line">
+    <div class="{step_1_class}">
+        <span>01</span>
+        Connected Model
+    </div>
+<div class="workflow-line-divider"></div>
+
+<div class="{step_2_class}">
+        <span>02</span>
+        Add Screenshot
+    </div>
+<div class="workflow-line-divider"></div>
+
+<div class="{step_3_class}">
+        <span>03</span>
+        Choose Mode
+    </div>
+<div class="workflow-line-divider"></div>
+
+<div class="{step_4_class}">
+        <span>04</span>
+        Analyze
+    </div>
+</div>
         """,
         unsafe_allow_html=True,
     )
-
-    st.markdown(
-        """
-        <div class="feature-row">
-            <span class="feature-pill">🖼️ Screenshot-aware</span>
-            <span class="feature-pill">📐 DAX + schema context</span>
-            <span class="feature-pill">📝 Exportable outputs</span>
-            <span class="feature-pill">⚡ Multi-mode workflow</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    
 def has_report_context(
     uploaded_image,
     uploaded_context_file,
     schema_text: str,
     dax_text: str,
+    context_file_text: str,
 ) -> bool:
-    return any(
+        return any(
         [
             uploaded_image is not None,
             uploaded_context_file is not None,
             schema_text.strip(),
             dax_text.strip(),
+            context_file_text.strip(),
         ]
     )
 
+def render_connected_powerbi_card() -> None:
+    if not AUTO_POWERBI_CONTEXT_FILE.exists():
+        return
+
+    auto_context_text = read_auto_powerbi_context_file()
+    summary = parse_powerbi_model_summary(auto_context_text)
+
+    tables = summary["tables"]
+    columns = summary["columns"]
+    measures = summary["measures"]
+    relationships = summary["relationships"]
+
+    st.markdown(
+        f"""
+    <div class="connected-card">
+    <div class="connected-header">
+        <span class="status-dot"></span>
+        <div>
+            <div class="connected-title">Connected Power BI Model</div>
+            <div class="connected-subtitle">Model context loaded from current PBIX file</div>
+        </div>
+    </div>
+
+<div class="model-metrics">
+        <div class="model-metric">
+            <div class="metric-value">{tables}</div>
+            <div class="metric-label">Tables</div>
+        </div>
+        <div class="model-metric">
+            <div class="metric-value">{columns}</div>
+            <div class="metric-label">Columns</div>
+        </div>
+        <div class="model-metric">
+            <div class="metric-value">{measures}</div>
+            <div class="metric-label">Measures</div>
+        </div>
+        <div class="model-metric">
+            <div class="metric-value">{relationships}</div>
+            <div class="metric-label">Relationships</div>
+        </div>
+    </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 def render_context_column():
     st.subheader("Report Context")
+
+    render_connected_powerbi_card()
+
+    refresh_col1, refresh_col2 = st.columns([0.55, 0.45])
+
+    with refresh_col1:
+        st.button(
+            "Refresh Connected Model",
+            on_click=refresh_powerbi_model_context,
+            use_container_width=True,
+            help="Re-extract tables, columns, measures, and relationships from the currently open Power BI file.",
+        )
+
+    if st.session_state.refresh_message:
+        st.success(st.session_state.refresh_message)
+
+    if st.session_state.refresh_error:
+        st.error(st.session_state.refresh_error)
 
     with st.expander("How do I provide Power BI context?"):
         st.markdown(
@@ -782,67 +1347,93 @@ def render_context_column():
             **1. Upload a screenshot**
             - Best for dashboard layout reviews, visual feedback, and business insights.
 
-            **2. Paste schema/data context**
+            **2. Use connected Power BI model context**
+            - If launched from Power BI External Tools, the assistant can auto-load tables, columns, measures, and relationships.
+
+            **3. Paste schema/data context**
             Include:
             - Table names
             - Column names
             - Data types
             - Short notes about what the data represents
 
-            **3. Paste current DAX measures**
+            **4. Paste current DAX measures**
             Include any existing measures you want reviewed, improved, or used as context.
 
-            **4. Upload a context file**
+            **5. Upload a context file**
             Supported files:
             - `.txt`
             - `.md`
             - `.csv`
             - `.json`
-
-            Good context files include exported measures, data dictionaries, schema notes, or model documentation.
             """
         )
 
     uploaded_image = st.file_uploader(
         "Upload your Power BI screenshot",
         type=["png", "jpg", "jpeg"],
+        key=f"uploaded_image_{st.session_state.report_reset_id}",
     )
 
-    uploaded_context_file = st.file_uploader(
-        "Upload optional context file",
-        type=["txt", "md", "csv", "json"],
-        help="Upload a schema, data dictionary, exported measures, or report notes file."
-    )
-    if uploaded_context_file:
-        st.success(f"Loaded context file: {uploaded_context_file.name}")
+    mode = st.selectbox(
+        "Assistant Mode",
+        ASSISTANT_MODES,
+        key="assistant_mode",
+        on_change=mark_mode_chosen,
+)
 
-        context_preview = read_uploaded_context_file(uploaded_context_file)
-
-        with st.expander("Preview uploaded context"):
-            st.text(context_preview[:2000])    
-
-    mode = st.selectbox("Assistant Mode", ASSISTANT_MODES)
     st.caption(MODE_DESCRIPTIONS.get(mode, ""))
 
-    schema_text = st.text_area(
-        "Schema / Data Context",
-        height=180,
-        placeholder="Table: business_performance_data\nColumns:\nDate - Date\nCategory - Text\nRevenue - Currency\nCost - Currency...",
-        key="schema_input",
+    st.button(
+        "Start New Report",
+        on_click=start_new_report,
+        use_container_width=True,
+        help="Clear uploads, manual inputs, generated output, and response history.",
     )
 
-    dax_text = st.text_area(
-        "Current DAX Measures",
-        height=220,
-        placeholder="Total Revenue = SUM(business_performance_data[Revenue])",
-        key="dax_input",
-    )
+    uploaded_context_file = None
 
-    button_col1, button_col2 = st.columns(2)
-    with button_col1:
-        st.button("Load Sample", on_click=load_sample_inputs, use_container_width=True)
-    with button_col2:
-        st.button("Reset Inputs", on_click=reset_inputs, use_container_width=True)
+    with st.expander("Additional Context", expanded=False):
+        
+        st.caption(
+            "Use these only if you want to add extra schema, DAX, or documentation beyond the connected Power BI model."
+        )
+
+        uploaded_context_file = st.file_uploader(
+            "Upload optional context file",
+            type=["txt", "md", "csv", "json"],
+            help="Upload a schema, data dictionary, exported measures, or report notes file.",
+            key=f"uploaded_context_{st.session_state.report_reset_id}",
+    )
+        if uploaded_context_file:
+            st.success(f"Loaded context file: {uploaded_context_file.name}")
+
+            context_preview = read_uploaded_context_file(uploaded_context_file)
+
+            with st.expander("Preview uploaded context"):
+                st.text(context_preview[:2000])
+
+        schema_text = st.text_area(
+            "Schema / Data Context",
+            height=180,
+            placeholder="Table: business_performance_data\nColumns:\nDate - Date\nCategory - Text\nRevenue - Currency\nCost - Currency...",
+            key="schema_input",
+        )
+
+        dax_text = st.text_area(
+            "Current DAX Measures",
+            height=220,
+            placeholder="Total Revenue = SUM(business_performance_data[Revenue])",
+            key="dax_input",
+        )
+
+        button_col1, button_col2 = st.columns(2)
+
+        with button_col1:
+            st.button("Load Sample", on_click=load_sample_inputs, use_container_width=True)
+
+        with button_col2:
+            st.button("Reset Inputs", on_click=reset_inputs, use_container_width=True)
 
     return uploaded_image, uploaded_context_file, mode, schema_text, dax_text
 
@@ -863,9 +1454,16 @@ def render_preview_column(uploaded_image) -> str | None:
     return image_data_url
 
 
-def render_prompt_section(mode: str) -> tuple[str, bool]:
+def render_prompt_section(mode: str) -> tuple[str, bool, bool]:
     st.markdown("---")
     prompt_col1, prompt_col2, prompt_col3 = st.columns([0.22, 0.56, 0.22])
+
+    if st.session_state.last_mode != mode:
+        st.session_state.prompt_input = DEFAULT_QUESTIONS.get(
+            mode,
+            "What do you need help with?"
+        )
+        st.session_state.last_mode = mode
 
     with prompt_col2:
         st.markdown(
@@ -880,21 +1478,50 @@ def render_prompt_section(mode: str) -> tuple[str, bool]:
             """,
             unsafe_allow_html=True,
         )
-        st.markdown("### Ask the Assistant")
-        st.caption("Use the selected mode to review, debug, generate, or summarize your report.")
 
-        default_question = DEFAULT_QUESTIONS.get(mode, "What do you need help with?")
+        st.markdown("### Ask the Assistant")
+        st.caption("Choose a suggested prompt or write your own question.")
+
+        prompt_options = PROMPT_LIBRARY.get(mode, {})
+
+        if prompt_options:
+            st.markdown("**Prompt Library**")
+
+            prompt_items = list(prompt_options.items())
+
+            for row_start in range(0, len(prompt_items), 2):
+                cols = st.columns(2)
+
+                for col_index, (label, prompt_text) in enumerate(
+                    prompt_items[row_start:row_start + 2]
+                ):
+                    with cols[col_index]:
+                        st.button(
+                            label,
+                            key=f"prompt_{mode}_{label}",
+                            use_container_width=True,
+                            on_click=update_prompt_from_library,
+                            args=(prompt_text,),
+                        )
+
         user_question = st.text_area(
             "Message",
-            value=default_question,
+            key="prompt_input",
             height=110,
             label_visibility="collapsed",
         )
+
         use_latest_response = st.checkbox(
-            "Use latest response as context",
+            "Continue from last response",
             value=False,
-            help="Include the most recent assistant response when asking a follow-up question."
-)
+            help="Use the most recent assistant response as context for this question.",
+        )
+
+        if use_latest_response:
+            st.info(
+                "Follow-up mode is enabled. The assistant will use the last response as context and answer your new question directly."
+            )
+
         analyze_clicked = st.button("Analyze Report →", use_container_width=True)
 
     return user_question, analyze_clicked, use_latest_response
@@ -985,7 +1612,24 @@ def main() -> None:
     with left_col:
         uploaded_image, uploaded_context_file, mode, schema_text, dax_text = render_context_column()
     
-    context_file_text = read_uploaded_context_file(uploaded_context_file)
+    uploaded_context_text = read_uploaded_context_file(uploaded_context_file)
+    auto_powerbi_context_text = read_auto_powerbi_context_file()
+
+    context_file_text_parts = []
+
+    if auto_powerbi_context_text.strip():
+        context_file_text_parts.append(
+            "Auto-loaded Power BI Model Context:\n"
+            + auto_powerbi_context_text
+        )
+
+    if uploaded_context_text.strip():
+        context_file_text_parts.append(
+            "User-uploaded Context File:\n"
+            + uploaded_context_text
+        )
+
+    context_file_text = "\n\n---\n\n".join(context_file_text_parts)
 
     with right_col:
         image_data_url = render_preview_column(uploaded_image)
@@ -1001,7 +1645,8 @@ def main() -> None:
                 uploaded_context_file=uploaded_context_file,
                 schema_text=schema_text,
                 dax_text=dax_text,
-    ):
+                context_file_text=context_file_text,
+            ):
                 st.warning(
                     "Please upload a screenshot, upload a context file, paste schema/data context, or paste DAX measures before analyzing."
                 )
@@ -1027,6 +1672,7 @@ def main() -> None:
                         output_text = call_openai(user_prompt, image_data_url)
                         st.session_state.assistant_response = output_text
                         st.session_state.response_mode = mode
+                        st.session_state.analysis_done = True
                         st.session_state.response_history.append(
                         {
                             "mode": mode,

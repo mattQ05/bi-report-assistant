@@ -1,8 +1,8 @@
 # BI Report Assistant
 
-BI Report Assistant is an AI-powered Streamlit application that helps Power BI users review dashboards, debug DAX measures, generate new measures, write business insights, and create project documentation.
+BI Report Assistant is an AI-powered Streamlit app that helps Power BI users review dashboards, analyze model context, debug DAX, generate measures, write business insights, and create project documentation.
 
-The app allows users to upload a Power BI screenshot, provide schema or DAX context, upload optional text-based context files, and ask targeted questions using different assistant modes.
+The app provides a guided workflow for common Power BI tasks, including dashboard review, model analysis, DAX troubleshooting, insight writing, and project documentation. Users can upload screenshots, add schema or DAX context, upload supporting files, and choose from assistant modes with built-in prompt suggestions.
 
 ## App Preview
 
@@ -10,81 +10,78 @@ The app allows users to upload a Power BI screenshot, provide schema or DAX cont
 
 ![BI Report Assistant Main Interface](images/bi_assistant.png)
 
-
 ### Prompting Area
 
 ![Analyze Report Output](images/analyze_report.png)
 
-## Features
+## Usage Options
+
+### Quick Web Workflow
+
+Use the hosted Streamlit app for fast feedback without installing anything locally.
+
+Users can:
+
+- Upload a Power BI dashboard screenshot
+- Paste schema or DAX context
+- Upload optional context files
+- Choose an assistant mode
+- Use suggested prompts
+- Download generated feedback as Markdown
+
+This workflow is best for dashboard reviews, insights, DAX help, README writing, and portfolio project feedback.
+
+### Optional Power BI Desktop Integration
+
+For advanced local use, BI Report Assistant can also be launched from the **External Tools** ribbon in Power BI Desktop.
+
+When launched locally from Power BI Desktop, the app can extract:
+
+- Tables
+- Columns
+- Measures
+- DAX expressions
+- Relationships
+
+This workflow is best for model review, measure generation, and deeper Power BI model analysis.
+
+## Key Features
 
 ### Dashboard Review
 
-Upload a Power BI dashboard screenshot and receive feedback on:
+Upload a Power BI dashboard screenshot and receive feedback on layout, spacing, KPI placement, visual hierarchy, chart readability, color consistency, and presentation readiness.
 
-- Layout
-- Spacing
-- KPI placement
-- Chart readability
-- Visual hierarchy
-- Colors and design consistency
-- Presentation readiness
+### Model Review
+
+Review Power BI model structure, including tables, columns, measures, relationships, naming clarity, Date table needs, and star schema opportunities.
 
 ### DAX Debugging
 
-Paste DAX measures and get help with:
-
-- Syntax issues
-- Measure logic
-- Naming clarity
-- Better DAX patterns
-- Safer `DIVIDE()` usage
-- Simple verification steps
+Check DAX measures for syntax issues, logic problems, naming clarity, safer `DIVIDE()` usage, and better calculation patterns.
 
 ### Measure Generator
 
-Generate useful DAX measures based on the provided schema and existing measures.
-
-The assistant can suggest:
-
-- Core totals
-- Ratio and percentage measures
-- Category comparison measures
-- Time intelligence recommendations
-- KPI card ideas
+Generate useful DAX measures based on provided schema, existing measures, or connected model context.
 
 ### Insight Writer
 
-Turn dashboard metrics into business-friendly insights, including:
-
-- Executive summaries
-- Key insights
-- Recommended actions
-- Dashboard callout text
+Turn dashboard metrics into executive-friendly insights, recommended actions, and dashboard callout text.
 
 ### README Writer
 
-Generate a professional GitHub README for a Power BI dashboard project using the provided dashboard context.
+Generate professional GitHub README content for Power BI dashboard projects.
 
-### Optional Context File Upload
+### Response History and Follow-Ups
 
-Users can upload supporting files such as:
-
-- `.txt`
-- `.md`
-- `.csv`
-- `.json`
-
-These files can contain schema notes, data dictionaries, exported measures, or project documentation.
-
-### Response History
-
-The app stores generated responses during the session so users can review previous outputs and ask follow-up questions.
+The app stores responses during the session and allows users to continue from the latest assistant response.
 
 ### Exportable Outputs
 
-Generated responses can be downloaded as Markdown files for use in reports, documentation, or GitHub projects.
+Generated responses can be downloaded as Markdown files.
 
 ## Tech Stack
+
+### Web App
 
 - Python
 - Streamlit
@@ -92,7 +89,15 @@ Generated responses can be downloaded as Markdown files for use in reports, docu
 - Pillow
 - python-dotenv
 
-## Setup Instructions
+### Optional Local Power BI Integration
+
+- pythonnet
+- Microsoft ADOMD.NET / Analysis Services client libraries
+- Power BI Desktop External Tools
+
+![](images/external_tool.png)
+
+## Setup: Streamlit App
 
 ### 1. Clone the repository
 
@@ -101,62 +106,49 @@ git clone https://github.com/YOUR-USERNAME/bi-report-assistant.git
 cd bi-report-assistant
 ```
 
-### 2. Create a virtual environment
+### 2. Create and activate a virtual environment
 
 ```bash
 python -m venv .venv
-```
-
-### 3. Activate the virtual environment
-
-Windows:
-
-```bash
 .venv\Scripts\activate
 ```
 
-macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-### 4. Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Create a `.env` file
-
-Create a file named `.env` in the root folder and add your OpenAI API key:
+### 4. Create a `.env` file
 
 ```text
 OPENAI_API_KEY=your_api_key_here
 ```
 
-### 6. Run the app
+### 5. Run the app
 
 ```bash
 streamlit run app.py
 ```
 
-## How to Use
+## Optional: Power BI Desktop External Tool Setup
 
-1. Upload a Power BI screenshot if you want visual dashboard feedback.
-2. Paste schema or data context into the schema box.
-3. Paste DAX measures into the DAX box.
-4. Optionally upload a context file.
-5. Select an assistant mode.
-6. Ask a question.
-7. Click **Analyze Report**.
-8. Review, download, or continue refining the response.
+For direct Power BI Desktop model extraction, see:
+
+```text
+POWERBI_EXTERNAL_TOOL_SETUP.md
+```
+
+The hosted Streamlit version cannot directly connect to a user's local PBIX model. Direct Power BI model extraction requires the local External Tool setup.
 
 ## Environment Variables
 
-This project uses an OpenAI API key stored locally in a `.env` file.
+```text
+OPENAI_API_KEY=your_api_key_here
+ADOMD_DLL_PATH=C:\Program Files\Microsoft.NET\ADOMD.NET\160\Microsoft.AnalysisServices.AdomdClient.dll
+```
 
-Do not upload your `.env` file to GitHub.
+`ADOMD_DLL_PATH` is only needed for the optional local Power BI Desktop integration.
 
 Recommended `.gitignore`:
 
@@ -166,32 +158,33 @@ Recommended `.gitignore`:
 __pycache__/
 *.pyc
 .streamlit/secrets.toml
+
+powerbi_context.txt
+powerbi_model_context.txt
 ```
 
 ## Data Privacy Notes
 
 This app is designed for sample, anonymized, or non-sensitive dashboard context.
 
-Before uploading files or screenshots, users should remove:
+Before uploading files, screenshots, or model metadata, users should remove confidential company data, customer information, internal financial details, private strategy, and personally identifiable information.
 
-- Confidential company data
-- Customer information
-- Internal financial data
-- Private business strategy
-- Personally identifiable information
+## Limitations
+
+- The hosted app supports manual screenshot and context uploads.
+- Direct PBIX model extraction requires local setup with Power BI Desktop.
+- The app does not directly modify PBIX files.
+- AI-generated suggestions should be reviewed before being used professionally.
 
 ## Future Improvements
 
-Potential future enhancements include:
-
-- Direct Power BI metadata extraction
-- More advanced chat-style follow-up behavior
-- Project-level saved sessions
-- PDF export for generated reports
-- Improved support for larger model documentation files
-- More advanced context parsing for schema and DAX files
-- Streamlit Cloud deployment
+- Mode cards instead of a dropdown selector
+- Saved project sessions
+- PDF export
+- Better support for large Power BI models
+- Deeper model relationship analysis
+- More advanced Date table and star schema detection
 
 ## Disclaimer
 
-This tool is intended to support Power BI workflow improvement, dashboard review, and BI documentation. AI-generated suggestions should be reviewed before being used in professional, academic, or business settings.
+BI Report Assistant supports Power BI workflow improvement, dashboard review, model analysis, DAX troubleshooting, insight writing, and documentation. AI-generated suggestions should be reviewed before use in professional, academic, or business settings.

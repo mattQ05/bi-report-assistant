@@ -3,3 +3,6 @@
 __pycache__/
 *.pyc
 .streamlit/secrets.toml
+
+powerbi_context.txt
+powerbi_model_context.txt
