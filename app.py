@@ -973,6 +973,7 @@ def start_new_report() -> None:
     st.session_state.report_reset_id += 1
 
 AUTO_POWERBI_CONTEXT_FILE = Path(__file__).resolve().parent / "powerbi_model_context.txt"
+POWERBI_CONNECTION_FILE = Path(__file__).resolve().parent / "powerbi_context.txt"
 POWERBI_EXTRACTOR_SCRIPT = Path(__file__).resolve().parent / "extract_powerbi_metadata.py"
 MAX_CONTEXT_CHARS = 8000  # Limit context file text to prevent excessively long inputs
 
@@ -1321,11 +1322,18 @@ def render_connected_powerbi_card() -> None:
 def render_context_column():
     st.subheader("Report Context")
 
-    render_connected_powerbi_card()
+    model_context_exists = AUTO_POWERBI_CONTEXT_FILE.exists()
+    powerbi_refresh_available = (
+        AUTO_POWERBI_CONTEXT_FILE.exists()
+        and POWERBI_CONNECTION_FILE.exists()
+    )
 
-    refresh_col1, refresh_col2 = st.columns([0.55, 0.45])
+    # Show the visual model summary card if model metadata exists
+    if model_context_exists:
+        render_connected_powerbi_card()
 
-    with refresh_col1:
+    # Only show refresh when the Power BI connection file exists too
+    if powerbi_refresh_available:
         st.button(
             "Refresh Connected Model",
             on_click=refresh_powerbi_model_context,
@@ -1333,11 +1341,11 @@ def render_context_column():
             help="Re-extract tables, columns, measures, and relationships from the currently open Power BI file.",
         )
 
-    if st.session_state.refresh_message:
-        st.success(st.session_state.refresh_message)
+        if st.session_state.refresh_message:
+            st.success(st.session_state.refresh_message)
 
-    if st.session_state.refresh_error:
-        st.error(st.session_state.refresh_error)
+        if st.session_state.refresh_error:
+            st.error(st.session_state.refresh_error)
 
     with st.expander("How do I provide Power BI context?"):
         st.markdown(
