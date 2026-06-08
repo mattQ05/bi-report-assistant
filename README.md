@@ -4,6 +4,17 @@ BI Report Assistant is an AI-powered Streamlit application that helps Power BI u
 
 The app allows users to upload a Power BI screenshot, provide schema or DAX context, upload optional text-based context files, and ask targeted questions using different assistant modes.
 
+## App Preview
+
+### Main Interface
+
+![BI Report Assistant Main Interface](images/bi_assistant.png)
+
+
+### Prompting Area
+
+![Analyze Report Output](images/analyze_report.png)
+
 ## Features
 
 ### Dashboard Review
@@ -140,38 +151,6 @@ streamlit run app.py
 6. Ask a question.
 7. Click **Analyze Report**.
 8. Review, download, or continue refining the response.
-
-## Example Prompts
-
-### Dashboard Review
-
-```text
-Can you review my dashboard and tell me what looks good, what looks off, and what I should fix before sharing it?
-```
-
-### DAX Debugging
-
-```text
-Can you check my DAX measures, fix any issues, and explain what I should change?
-```
-
-### Measure Generator
-
-```text
-Using only the uploaded context file, suggest 5 useful DAX measures I should add to this dashboard.
-```
-
-### Insight Writer
-
-```text
-Can you write the main business insights from this dashboard?
-```
-
-### README Writer
-
-```text
-Can you write a professional GitHub README for this Power BI dashboard project?
-```
 
 ## Environment Variables
 
