@@ -20,8 +20,16 @@ st.set_page_config(
 load_dotenv()
 
 api_key = os.getenv("OPENAI_API_KEY")
+
+try:
+    api_key = api_key or st.secrets.get("OPENAI_API_KEY")
+except Exception:
+    pass
+
 if not api_key:
-    st.error("Missing OpenAI API key. Please add OPENAI_API_KEY to your .env file.")
+    st.error(
+        "Missing OpenAI API key. Add OPENAI_API_KEY to your local .env file or Streamlit Cloud secrets."
+    )
     st.stop()
 
 client = OpenAI(api_key=api_key)
