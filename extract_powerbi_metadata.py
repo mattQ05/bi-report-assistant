@@ -337,7 +337,11 @@ def main() -> None:
     print("Extracting Power BI model metadata...")
 
     metadata_text = extract_metadata()
-    OUTPUT_FILE.write_text(metadata_text, encoding="utf-8")
+
+    # Prepend a sync timestamp so the app can display "Last synced X ago"
+    from datetime import datetime, timezone
+    timestamp_line = f"Synced: {datetime.now(timezone.utc).isoformat()}\n\n"
+    OUTPUT_FILE.write_text(timestamp_line + metadata_text, encoding="utf-8")
 
     print(f"Metadata exported to: {OUTPUT_FILE}")
 

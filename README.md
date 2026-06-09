@@ -1,190 +1,171 @@
 # BI Report Assistant
 
-BI Report Assistant is an AI-powered Streamlit app that helps Power BI users review dashboards, analyze model context, debug DAX, generate measures, write business insights, and create project documentation.
+An AI-powered workflow tool for Power BI developers. Review dashboards, audit data models, debug DAX measures, generate business insights, and write documentation — all from a single interface connected directly to your open PBIX file.
 
-The app provides a guided workflow for common Power BI tasks, including dashboard review, model analysis, DAX troubleshooting, insight writing, and project documentation. Users can upload screenshots, add schema or DAX context, upload supporting files, and choose from assistant modes with built-in prompt suggestions.
+Built with Streamlit and the OpenAI API. Runs locally as a Power BI External Tool or in the cloud via Streamlit Cloud.
 
-## App Preview
+---
 
-### Main Interface
+## What it does
 
-![BI Report Assistant Main Interface](images/bi_assistant.png)
+BI Report Assistant gives you six focused AI modes, each tailored to a specific stage of the Power BI workflow:
 
-### Prompting Area
+| Mode | What it does |
+|---|---|
+| **Dashboard Review** | Reviews layout, visual hierarchy, spacing, and presentation readiness |
+| **Model Review** | Audits table structure, relationships, naming, and star schema design |
+| **DAX Debugging** | Finds syntax errors, logic issues, and missing patterns across all measures |
+| **Measure Generator** | Suggests practical DAX measures based on your schema and existing measures |
+| **Insight Writer** | Turns dashboard metrics into executive-ready business insights |
+| **README Writer** | Writes a polished GitHub README for your Power BI project |
 
-![Analyze Report Output](images/analyze_report.png)
+---
 
-## Usage Options
+## Two ways to use it
 
-### Quick Web Workflow
+### Local — Connected Model (recommended)
 
-Use the hosted Streamlit app for fast feedback without installing anything locally.
+When launched from Power BI Desktop via the External Tools ribbon, the app automatically extracts your live model — tables, columns, measures, relationships — and loads it as context. No copying and pasting.
 
-Users can:
+<img src="images/external_tool.png" alt="BI Report Assistant in the Power BI External Tools ribbon"/>
 
-- Upload a Power BI dashboard screenshot
-- Paste schema or DAX context
-- Upload optional context files
-- Choose an assistant mode
-- Use suggested prompts
-- Download generated feedback as Markdown
+Once connected, the assistant reads your model directly:
 
-This workflow is best for dashboard reviews, insights, DAX help, README writing, and portfolio project feedback.
+<img src="images/local_app.png" alt="Local app with connected Power BI model" width="700"/>
 
-### Optional Power BI Desktop Integration
+### Cloud — Paste Context
 
-For advanced local use, BI Report Assistant can also be launched from the **External Tools** ribbon in Power BI Desktop.
+Use the app from anywhere by pasting your schema and DAX measures manually, or uploading a dashboard screenshot. No Power BI Desktop required.
 
-When launched locally from Power BI Desktop, the app can extract:
+<img src="images/cloud_app.png" alt="Cloud version with manual context input" width="700"/>
 
-- Tables
-- Columns
-- Measures
-- DAX expressions
-- Relationships
+---
 
-This workflow is best for model review, measure generation, and deeper Power BI model analysis.
+## Features
 
-## Key Features
+- **Live model connection** — extracts tables, columns, measures, and relationships from the open PBIX file via ADOMD.NET. Shows sync timestamp and object counts on the model card.
+- **Streaming responses** — output appears word by word as the model generates it, with mode-specific loading messages.
+- **Smart model routing** — uses `gpt-4o` for vision-based modes (Dashboard Review, Insight Writer) and `gpt-4o-mini` for structured analytical modes, automatically.
+- **Per-mode output tabs** — responses from different modes are kept as separate tabs so switching modes doesn't lose previous output.
+- **Active context summary** — shows exactly what the assistant has loaded before you submit: connected model, screenshot, schema, DAX, or uploaded file.
+- **Mode-aware UI** — the preview column, pipeline steps, and suggested prompts all adapt to the selected mode.
+- **Session export** — download all responses from a session as a single Markdown document.
+- **DAX formatter** — normalises keyword casing in pasted DAX before sending to the API.
+- **Response history with re-run** — every response is stored in history with a Re-run button to reload the question and mode instantly.
 
-### Dashboard Review
+---
 
-Upload a Power BI dashboard screenshot and receive feedback on layout, spacing, KPI placement, visual hierarchy, chart readability, color consistency, and presentation readiness.
+## Screenshots
 
-### Model Review
+### Blank report — getting started
 
-Review Power BI model structure, including tables, columns, measures, relationships, naming clarity, Date table needs, and star schema opportunities.
+<img src="images/blank_report.png" alt="App on first load with onboarding" width="700"/>
 
-### DAX Debugging
+### Output — Dashboard Review
 
-Check DAX measures for syntax issues, logic problems, naming clarity, safer `DIVIDE()` usage, and better calculation patterns.
+<img src="images/output.png" alt="Dashboard Review output" width="700"/>
 
-### Measure Generator
+### Response history
 
-Generate useful DAX measures based on provided schema, existing measures, or connected model context.
+<img src="images/response_history.png" alt="Response history with re-run buttons" width="700"/>
 
-### Insight Writer
+---
 
-Turn dashboard metrics into executive-friendly insights, recommended actions, and dashboard callout text.
+## Setup
 
-### README Writer
+### Prerequisites
 
-Generate professional GitHub README content for Power BI dashboard projects.
+- Python 3.10+
+- An OpenAI API key — [platform.openai.com](https://platform.openai.com)
+- Power BI Desktop (local mode only)
+- ADOMD.NET 16.0 (local mode only) — installed with [SQL Server Management Studio](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms) or the Analysis Services client
 
-### Response History and Follow-Ups
+---
 
-The app stores responses during the session and allows users to continue from the latest assistant response.
-
-### Exportable Outputs
-
-Generated responses can be downloaded as Markdown files.
-
-## Tech Stack
-
-### Web App
-
-- Python
-- Streamlit
-- OpenAI API
-- Pillow
-- python-dotenv
-
-### Optional Local Power BI Integration
-
-- pythonnet
-- Microsoft ADOMD.NET / Analysis Services client libraries
-- Power BI Desktop External Tools
-
-![](images/external_tool.png)
-
-## Setup: Streamlit App
-
-### 1. Clone the repository
+### Cloud / Streamlit deployment
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/bi-report-assistant.git
+git clone https://github.com/yourusername/bi-report-assistant
 cd bi-report-assistant
-```
-
-### 2. Create and activate a virtual environment
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Create a `.env` file
+Copy `.env.example` to `.env` and add your key:
 
-```text
-OPENAI_API_KEY=your_api_key_here
+```
+OPENAI_API_KEY=sk-...
+BI_ASSISTANT_CLOUD=true
 ```
 
-### 5. Run the app
+Run:
 
 ```bash
 streamlit run app.py
 ```
 
-## Optional: Power BI Desktop External Tool Setup
+---
 
-For direct Power BI Desktop model extraction, see:
+### Local — Power BI External Tool
 
-```text
-POWERBI_EXTERNAL_TOOL_SETUP.md
+Install local dependencies:
+
+```bash
+pip install -r requirements-local.txt
 ```
 
-The hosted Streamlit version cannot directly connect to a user's local PBIX model. Direct Power BI model extraction requires the local External Tool setup.
+Copy `.env.example` to `.env` and add your key:
 
-## Environment Variables
-
-```text
-OPENAI_API_KEY=your_api_key_here
-ADOMD_DLL_PATH=C:\Program Files\Microsoft.NET\ADOMD.NET\160\Microsoft.AnalysisServices.AdomdClient.dll
+```
+OPENAI_API_KEY=sk-...
 ```
 
-`ADOMD_DLL_PATH` is only needed for the optional local Power BI Desktop integration.
+Then follow the setup guide to register the app as a Power BI External Tool:
 
-Recommended `.gitignore`:
+📄 **[POWERBI_EXTERNAL_TOOL_SETUP.md](POWERBI_EXTERNAL_TOOL_SETUP.md)**
 
-```text
-.env
-.venv/
-__pycache__/
-*.pyc
-.streamlit/secrets.toml
+Once registered, the tool appears in the **External Tools** ribbon in Power BI Desktop. Clicking it launches the app and automatically loads the open model.
 
-powerbi_context.txt
-powerbi_model_context.txt
+---
+
+## Project structure
+
+```
+bi-report-assistant/
+├── app.py                          # Main Streamlit application
+├── launch_bi_assistant.py          # External tool launcher — writes context and starts app
+├── extract_powerbi_metadata.py     # ADOMD.NET metadata extractor
+├── BI Report Assistant.pbitool.json # Power BI External Tool registration file
+├── images/                         # Screenshots used in this README
+├── requirements.txt                # Cloud/Streamlit dependencies
+├── requirements-local.txt          # Local dependencies (includes pythonnet)
+├── .env.example                    # Environment variable template
+└── POWERBI_EXTERNAL_TOOL_SETUP.md  # Step-by-step External Tool setup guide
 ```
 
-## Data Privacy Notes
+---
 
-This app is designed for sample, anonymized, or non-sensitive dashboard context.
+## Environment variables
 
-Before uploading files, screenshots, or model metadata, users should remove confidential company data, customer information, internal financial details, private strategy, and personally identifiable information.
+| Variable | Required | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | Yes | Your OpenAI API key |
+| `BI_ASSISTANT_CLOUD` | No | Set to `true` to enable cloud mode (hides model connection UI) |
+| `ADOMD_DLL_PATH` | No | Path to `Microsoft.AnalysisServices.AdomdClient.dll` if not in the default location |
 
-## Limitations
+---
 
-- The hosted app supports manual screenshot and context uploads.
-- Direct PBIX model extraction requires local setup with Power BI Desktop.
-- The app does not directly modify PBIX files.
-- AI-generated suggestions should be reviewed before being used professionally.
+## Tech stack
 
-## Future Improvements
+- [Streamlit](https://streamlit.io) — UI framework
+- [OpenAI API](https://platform.openai.com) — `gpt-4o` and `gpt-4o-mini` with streaming
+- [pythonnet](https://github.com/pythonnet/pythonnet) — .NET interop for ADOMD.NET (local mode)
+- [ADOMD.NET](https://learn.microsoft.com/en-us/analysis-services/adomd/mpp/adomd-net-client-functionality) — Power BI model metadata extraction
+- [Pillow](https://pillow.readthedocs.io) — screenshot processing
 
-- Mode cards instead of a dropdown selector
-- Saved project sessions
-- PDF export
-- Better support for large Power BI models
-- Deeper model relationship analysis
-- More advanced Date table and star schema detection
+---
 
-## Disclaimer
+## Data and privacy
 
-BI Report Assistant supports Power BI workflow improvement, dashboard review, model analysis, DAX troubleshooting, insight writing, and documentation. AI-generated suggestions should be reviewed before use in professional, academic, or business settings.
+This app sends your Power BI schema, DAX measures, and optionally a dashboard screenshot to the OpenAI API for analysis. No data is stored by this application. Review [OpenAI's data usage policies](https://openai.com/policies/api-data-usage-policies) before using with sensitive or proprietary data.
+
+Do not use real company data, customer information, or confidential business metrics without reviewing your organisation's policies on external AI tool usage.

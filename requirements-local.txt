@@ -1,2 +1,2 @@
 -r requirements.txt
-pythonnet
+pythonnet>=3.0.0

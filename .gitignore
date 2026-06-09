@@ -1,8 +1,39 @@
+# ── Environment ───────────────────────────────────────────────────────────────
 .env
-.venv/
-__pycache__/
-*.pyc
-.streamlit/secrets.toml
+.env.local
 
+# ── Power BI runtime files (generated at runtime, contain live model data) ────
 powerbi_context.txt
 powerbi_model_context.txt
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Streamlit ─────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.user
