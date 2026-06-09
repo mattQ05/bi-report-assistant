@@ -1909,7 +1909,14 @@ def render_header() -> None:
     screenshot_added = st.session_state.get(screenshot_key) is not None
     mode_selected = True  # a mode is always selected (defaults to Dashboard Review)
     analysis_done = st.session_state.get("analysis_done", False)
-    current_mode = st.session_state.get("assistant_mode", ASSISTANT_MODES[0])
+    # Read mode directly from the radio widget's session key — Streamlit commits
+    # widget values before the script runs, so this is always the current selection
+    # even though the radio widget hasn't been drawn yet this frame.
+    raw_radio = st.session_state.get("mode_radio", "")
+    current_mode = next(
+        (m for m in ASSISTANT_MODES if raw_radio and m in raw_radio),
+        st.session_state.get("assistant_mode", ASSISTANT_MODES[0]),
+    )
 
     # Modes where a screenshot is the primary context input
     visual_modes = {"Dashboard Review", "Insight Writer"}
@@ -2584,6 +2591,10 @@ def render_history_section() -> None:
 def main() -> None:
     apply_custom_css()
     init_session_state()
+
+    # st.radio commits its selected value to session_state before any code runs
+    # on each rerun — so assistant_mode is always the current value here,
+    # even though the radio widget hasn't been drawn yet this frame.
     render_header()
 
     left_col, right_col = st.columns([0.95, 1.05])
