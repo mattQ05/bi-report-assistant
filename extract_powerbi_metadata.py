@@ -1,23 +1,34 @@
 from pathlib import Path
 import os
 import sys
-import clr
+
+# Allow running from any working directory
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 # ============================================================
 # ADOMD.NET setup
 # ============================================================
-ADOMD_DLL_PATH = os.getenv(
-    "ADOMD_DLL_PATH",
-    r"C:\Program Files\Microsoft.NET\ADOMD.NET\160\Microsoft.AnalysisServices.AdomdClient.dll"
-)
+# Resolve DLL path: env var → config.json → known install locations
+try:
+    from config import get_adomd_dll_path
+    _found = get_adomd_dll_path()
+    ADOMD_DLL_PATH = str(_found) if _found else os.getenv("ADOMD_DLL_PATH", "")
+except ImportError:
+    ADOMD_DLL_PATH = os.getenv(
+        "ADOMD_DLL_PATH",
+        r"C:\Program Files\Microsoft.NET\ADOMD.NET\160\Microsoft.AnalysisServices.AdomdClient.dll"
+    )
+
+import clr
+
 dll_path = Path(ADOMD_DLL_PATH)
 
 if not dll_path.exists():
     raise FileNotFoundError(
         f"Could not find ADOMD.NET DLL at:\n{ADOMD_DLL_PATH}\n\n"
-        "Search for Microsoft.AnalysisServices.AdomdClient.dll on your computer "
-        "and update ADOMD_DLL_PATH."
+        "Run 'bi_report_assistant.exe --setup' to configure the DLL path, "
+        "or install SSMS from Microsoft."
     )
 
 adomd_folder = str(dll_path.parent)
@@ -36,8 +47,18 @@ from Microsoft.AnalysisServices.AdomdClient import AdomdConnection
 # File helpers
 # ============================================================
 PROJECT_FOLDER = Path(__file__).resolve().parent
-POWERBI_CONTEXT_FILE = PROJECT_FOLDER / "powerbi_context.txt"
-OUTPUT_FILE = PROJECT_FOLDER / "powerbi_model_context.txt"
+
+# Runtime files live in the app data dir, not the install dir
+# The launcher sets BI_ASSISTANT_DATA_DIR before calling this script
+try:
+    from config import get_app_data_dir
+    _data_dir = get_app_data_dir()
+except ImportError:
+    _env_dir = os.environ.get("BI_ASSISTANT_DATA_DIR", "")
+    _data_dir = Path(_env_dir) if _env_dir else PROJECT_FOLDER
+
+POWERBI_CONTEXT_FILE = _data_dir / "powerbi_context.txt"
+OUTPUT_FILE          = _data_dir / "powerbi_model_context.txt"
 
 
 def read_powerbi_context_file() -> tuple[str, str]:

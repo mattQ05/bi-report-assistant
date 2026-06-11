@@ -1,176 +1,110 @@
-# Power BI External Tool Setup
+# Power BI External Tool — Setup Guide
 
-This guide walks through registering BI Report Assistant as a Power BI External Tool so it appears in the **External Tools** ribbon in Power BI Desktop and launches with your model pre-loaded.
-
----
-
-## Prerequisites
-
-Before starting, make sure you have:
-
-- **Python 3.10 or later** installed and on your system PATH
-- **Power BI Desktop** installed (Microsoft Store or installer version)
-- **ADOMD.NET 16.0** — the DLL that lets the app connect to Power BI's local Analysis Services instance
-
-### Installing ADOMD.NET
-
-The easiest way to get the right version is to install **SQL Server Management Studio (SSMS)**, which bundles it:
-
-👉 [Download SSMS](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms)
-
-After installation, confirm the DLL exists at:
-```
-C:\Program Files\Microsoft.NET\ADOMD.NET\160\Microsoft.AnalysisServices.AdomdClient.dll
-```
-
-If it's at a different path, set `ADOMD_DLL_PATH` in your `.env` file.
+> **Most users should use the Windows installer instead.**
+> Download `BI-Report-Assistant-Setup-1.0.0.exe` from [Releases](https://github.com/MattQ05/bi-report-assistant/releases/latest) — it handles everything automatically.
+>
+> This guide is for developers building from source or advanced users who need to register the tool manually.
 
 ---
 
-## Step 1 — Install the app
+## How it works
 
-Clone or download the repository, then install local dependencies:
+When you click the **BI Report Assistant** button in Power BI's External Tools ribbon, Power BI Desktop calls:
+
+```
+bi_report_assistant.exe --server <server> --database <database>
+```
+
+Power BI passes the local Analysis Services server address and database ID as arguments. The launcher:
+
+1. Writes the connection details to `powerbi_context.txt` in `%APPDATA%\BI Report Assistant\`
+2. Runs `extract_powerbi_metadata.py` which connects via ADOMD.NET and extracts tables, columns, measures, and relationships to `powerbi_model_context.txt`
+3. Starts the Streamlit app and opens your browser at `http://localhost:8501`
+4. The app reads `powerbi_model_context.txt` and shows the connected model card automatically
+
+---
+
+## Building from source
+
+### Prerequisites
+
+- Python 3.10+
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+- [PyInstaller](https://pyinstaller.org) — installed automatically by `build.bat`
+- ADOMD.NET 16.0 — install via [SSMS](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms)
+
+### Build
 
 ```bash
+git clone https://github.com/MattQ05/bi-report-assistant
 cd bi-report-assistant
-pip install -r requirements-local.txt
+build.bat
 ```
+
+The installer is output to `installer_output\BI-Report-Assistant-Setup-1.0.0.exe`.
 
 ---
 
-## Step 2 — Add your API key
+## Manual External Tool registration
 
-Copy `.env.example` to `.env`:
+If you need to register the tool manually without the installer:
 
-```bash
-copy .env.example .env
-```
+### 1 — Find the External Tools folder
 
-Open `.env` and add your OpenAI API key:
-
-```
-OPENAI_API_KEY=sk-...
-```
-
-Leave `BI_ASSISTANT_CLOUD` unset or set to `false` for local use.
-
----
-
-## Step 3 — Register the External Tool
-
-Power BI Desktop discovers external tools by reading `.pbitool.json` files from a specific folder.
-
-### Find the External Tools folder
-
-The folder is typically:
 ```
 C:\Program Files (x86)\Common Files\Microsoft Shared\Power BI Desktop\External Tools\
 ```
 
-If the `External Tools` folder doesn't exist, create it.
+Create it if it doesn't exist.
 
-### Copy the tool registration file
+### 2 — Create the registration file
 
-Copy `BI Report Assistant.pbitool.json` from the project folder into the External Tools folder:
-
-```
-C:\Program Files (x86)\Common Files\Microsoft Shared\Power BI Desktop\External Tools\BI Report Assistant.pbitool.json
-```
-
-### Update the file paths inside it
-
-Open `BI Report Assistant.pbitool.json` in a text editor and update two values:
+Create `BI Report Assistant.pbitool.json` in that folder:
 
 ```json
 {
   "version": "1.0.0",
   "name": "BI Report Assistant",
   "description": "AI-powered Power BI workflow assistant",
-  "path": "C:\\path\\to\\your\\python.exe",
-  "arguments": "\"C:\\path\\to\\bi-report-assistant\\launch_bi_assistant.py\" --server \"%server%\" --database \"%database%\"",
-  "iconData": "..."
+  "path": "C:\\Program Files (x86)\\BI Report Assistant\\bi_report_assistant.exe",
+  "arguments": "--server \"%server%\" --database \"%database%\"",
+  "iconData": ""
 }
 ```
 
-- **`path`** — the full path to your Python executable. Find it by running `where python` in a terminal.
-- **`arguments`** — the full path to `launch_bi_assistant.py` in the project folder.
+Update `path` to match your actual install location.
 
-#### Example (adjust to your actual paths):
+### 3 — Restart Power BI Desktop
 
-```json
-"path": "C:\\Users\\Matthew\\Documents\\bi-report-assistant\\.venv\\Scripts\\python.exe",
-"arguments": "\"C:\\Users\\Matthew\\Documents\\bi-report-assistant\\launch_bi_assistant.py\" --server \"%server%\" --database \"%database%\""
-```
-
-> **Tip:** Use the Python executable inside your virtual environment (`.venv\Scripts\python.exe`) rather than the system Python to ensure all dependencies are available.
+The tool will appear in the External Tools ribbon on next launch.
 
 ---
 
-## Step 4 — Restart Power BI Desktop
+## Re-running setup
 
-Close and reopen Power BI Desktop. Open any `.pbix` file.
-
-You should now see **BI Report Assistant** in the **External Tools** ribbon:
-
-![External Tools ribbon](images/external_tool.png)
-
----
-
-## Step 5 — Launch the tool
-
-1. Open the report you want to work with in Power BI Desktop
-2. Click **BI Report Assistant** in the External Tools ribbon
-3. The app will:
-   - Write the model's server and database connection to `powerbi_context.txt`
-   - Extract tables, columns, measures, and relationships to `powerbi_model_context.txt`
-   - Launch the Streamlit app at `http://localhost:8501`
-4. Your browser will open (or navigate to `http://localhost:8501` manually)
-5. The connected model card will appear with your model's stats
-
----
-
-## How it works
-
-When you click the External Tool button, Power BI Desktop calls:
+To update your API key or re-register the External Tool at any time:
 
 ```
-python launch_bi_assistant.py --server <server> --database <database>
+"C:\Program Files (x86)\BI Report Assistant\bi_report_assistant.exe" --setup
 ```
-
-Power BI passes the local Analysis Services server address and database name as arguments. `launch_bi_assistant.py` writes these to `powerbi_context.txt`, then runs `extract_powerbi_metadata.py` which connects via ADOMD.NET and extracts the full model schema to `powerbi_model_context.txt`. The Streamlit app reads this file and loads it as context automatically.
 
 ---
 
 ## Troubleshooting
 
-**The tool doesn't appear in the ribbon**
-- Confirm the `.pbitool.json` file is in the correct External Tools folder
-- Check the JSON is valid (no trailing commas, correct quotes) — use [jsonlint.com](https://jsonlint.com)
-- Restart Power BI Desktop after adding the file
+**Tool doesn't appear in the ribbon**
+- Confirm the `.pbitool.json` is in the correct External Tools folder
+- Validate the JSON at [jsonlint.com](https://jsonlint.com)
+- Fully close and reopen Power BI Desktop
 
-**The app opens but the model isn't connected**
-- Check that `powerbi_model_context.txt` was created in the project folder
-- Open a terminal and run `python extract_powerbi_metadata.py` manually to see the error output
-- Verify ADOMD.NET is installed and the DLL path is correct
-
-**`ModuleNotFoundError: pythonnet`**
-- Run `pip install -r requirements-local.txt` using the same Python that's referenced in the `.pbitool.json`
+**Model not connecting**
+- Check `%APPDATA%\BI Report Assistant\` — `powerbi_context.txt` and `powerbi_model_context.txt` should appear after clicking the button
+- ADOMD.NET must be installed — get it via [SSMS](https://learn.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms)
+- Run setup again: `bi_report_assistant.exe --setup` — verify the ADOMD DLL path is detected
 
 **Port 8501 already in use**
-- Another Streamlit app is running. Stop it, or add `--server.port 8502` to the `arguments` in the `.pbitool.json`
+- Another Streamlit instance is running. Close it or wait for it to stop.
 
-**`FileNotFoundError` for the ADOMD DLL**
-- Set `ADOMD_DLL_PATH` in your `.env` file to the actual path of `Microsoft.AnalysisServices.AdomdClient.dll` on your machine
-
----
-
-## Switching between reports
-
-The connected model context is tied to whichever PBIX file was open when you last clicked the External Tool button.
-
-To switch to a different report:
-1. Open the new report in Power BI Desktop
-2. Click **BI Report Assistant** in the External Tools ribbon again
-3. The app will re-extract the model and update the context automatically
-
-You can also click **↻ Refresh Model** inside the app to re-extract without relaunching, as long as the same file is still open.
+**Switching between reports**
+- Open the new report in Power BI Desktop and click the External Tools button again — the model context updates automatically
+- Or click **↻ Refresh Model** inside the app while the correct file is open

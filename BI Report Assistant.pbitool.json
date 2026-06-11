@@ -1,8 +1,0 @@
-{
-  "version": "1.0.0",
-  "name": "BI Report Assistant",
-  "description": "Launches BI Report Assistant from Power BI Desktop.",
-  "path": "C:\\Users\\YOUR-NAME\\Documents\\bi-report-assistant\\.venv\\Scripts\\python.exe",
-  "arguments": "C:\\Users\\YOUR-NAME\\Documents\\bi-report-assistant\\launch_bi_assistant.py --server \"%server%\" --database \"%database%\"",
-  "iconData": "image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAnUlEQVR4nO3PwQnDMBBE0S0guluFpI5sDarCvaiDqAoj1EEq0EH3VLCGgG+WIRgSkfwPc58nQkREv5Q2K9rM9nZrlmX0tHN+m4yeAvh3wBRr8bHa3qZY8/AA3zm/DcC3AdfleTg9C7iEe3EhWWd5eIDrn38NwALgJGB+HA5AA5AAeAAGwABEAAbAAagAFEAAYAAagATAfwpARETyRivEeD0nVvnfzwAAAABJRU5ErkJggg=="
-}

@@ -6,19 +6,27 @@
 powerbi_context.txt
 powerbi_model_context.txt
 
+# ── Build-time generated files ────────────────────────────────────────────────
+BI Report Assistant (with icon).pbitool.json
+BI Report Assistant_bundled.pbitool.json
+make_icon.py
+
+# ── PyInstaller build output ───────────────────────────────────────────────────
+build/
+dist/
+installer_output/
+*.spec.bak
+
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-.Python
 *.egg
 *.egg-info/
-dist/
-build/
 .eggs/
 
-# ── Virtual environments ───────────────────────────────────────────────────────
+# ── Virtual environments ──────────────────────────────────────────────────────
 .venv/
 venv/
 env/

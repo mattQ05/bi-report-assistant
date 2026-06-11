@@ -22,16 +22,27 @@ st.set_page_config(
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
-
+# ── API key: config.json → env var → Streamlit secrets ────────────────────────
+api_key = ""
 try:
-    api_key = api_key or st.secrets.get("OPENAI_API_KEY")
-except Exception:
+    from config import get_api_key as _get_api_key
+    api_key = _get_api_key()
+except ImportError:
     pass
 
 if not api_key:
+    api_key = os.getenv("OPENAI_API_KEY", "")
+
+if not api_key:
+    try:
+        api_key = st.secrets.get("OPENAI_API_KEY", "")
+    except Exception:
+        pass
+
+if not api_key:
     st.error(
-        "Missing OpenAI API key. Add OPENAI_API_KEY to your local .env file or Streamlit Cloud secrets."
+        "No OpenAI API key found. Run the setup wizard, add OPENAI_API_KEY to your "
+        ".env file, or add it to Streamlit Cloud secrets."
     )
     st.stop()
 
@@ -1378,9 +1389,22 @@ def start_new_report() -> None:
     st.session_state.response_by_mode = {}
     st.session_state.report_reset_id += 1
 
-AUTO_POWERBI_CONTEXT_FILE = Path(__file__).resolve().parent / "powerbi_model_context.txt"
-POWERBI_CONNECTION_FILE = Path(__file__).resolve().parent / "powerbi_context.txt"
-POWERBI_EXTRACTOR_SCRIPT = Path(__file__).resolve().parent / "extract_powerbi_metadata.py"
+try:
+    from config import get_app_data_dir as _get_data_dir
+    _data_dir = _get_data_dir()
+except ImportError:
+    _data_dir = None
+
+# Allow the launcher to explicitly tell us where the data dir is
+_env_data_dir = os.environ.get("BI_ASSISTANT_DATA_DIR", "")
+if _env_data_dir and Path(_env_data_dir).exists():
+    _data_dir = Path(_env_data_dir)
+elif _data_dir is None:
+    _data_dir = Path(__file__).resolve().parent
+
+AUTO_POWERBI_CONTEXT_FILE = _data_dir / "powerbi_model_context.txt"
+POWERBI_CONNECTION_FILE   = _data_dir / "powerbi_context.txt"
+POWERBI_EXTRACTOR_SCRIPT  = Path(__file__).resolve().parent / "extract_powerbi_metadata.py"
 
 def read_uploaded_context_file(uploaded_file) -> tuple[str, bool, int]:
     """Returns (text, was_truncated, original_char_count)."""
