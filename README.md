@@ -10,6 +10,7 @@ Built with Streamlit and the OpenAI API. Ships as a one-click Windows installer 
 
 No Python installation required. Download, run the installer, enter your OpenAI API key, and you're done.
 
+> Note: This installer is currently unsigned, so Windows SmartScreen may show a warning. Click **More info → Run anyway** if you trust the source.
 ---
 
 ## What it does
@@ -24,6 +25,18 @@ Six focused AI modes, each tailored to a specific stage of the Power BI workflow
 | **Measure Generator** | Suggests practical DAX measures based on your schema and existing measures |
 | **Insight Writer** | Turns dashboard metrics into executive-ready business insights |
 | **README Writer** | Writes a polished GitHub README for your Power BI project |
+
+---
+
+## Who this is for
+
+BI Report Assistant is useful for:
+
+- Power BI developers reviewing reports before sharing
+- Analysts debugging DAX or generating new measures
+- Students building portfolio dashboards
+- Teams documenting BI projects
+- Anyone who wants structured feedback on dashboards, models, and insights
 
 ---
 
