@@ -4,7 +4,7 @@ An AI-powered workflow tool for Power BI developers. Review dashboards, audit da
 
 Built with Streamlit and the OpenAI API. Ships as a one-click Windows installer that registers itself as a Power BI External Tool automatically.
 
-## Download
+## Download (currently fixing bugs 6/14)
 
 👉 **[Download the latest installer from Releases](https://github.com/MattQ05/bi-report-assistant/releases/latest)**
 
